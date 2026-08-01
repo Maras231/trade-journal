@@ -518,13 +518,7 @@ table.tradelist tr:hover td{background:var(--surface2);}
   </div>
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
     <div class="sync-widget">
-     <button class="btn" id="driveConnectBtn">
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px;margin-right:2px;">
-    <circle cx="12" cy="8" r="4"/>
-    <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
-  </svg>
-  Połącz się z kontem
-</button>
+      <button class="btn" id="driveConnectBtn">☁ Połącz z Google Drive</button>
       <div class="sync-status" id="syncStatusWrap" style="display:none;">
         <span class="sync-dot" id="syncDot"></span>
         <span id="syncText"></span>
@@ -542,7 +536,7 @@ table.tradelist tr:hover td{background:var(--surface2);}
 <nav class="tabs" id="tabNav" style="margin-bottom:0;">
   <button class="active" data-tab="dashboard"> Dashboard</button>
   <button data-tab="trades"> Baza transakcji</button>
-  <button data-tab="months"> Podsumowanie Miesięcy</button>
+  <button data-tab="months"> Podsumowanie Miesiąca</button>
 </nav>
 <nav class="tabs" style="margin-bottom:0;" id="modeToggle">
   <button class="active" data-mode="usd">$ P/L</button>
@@ -669,7 +663,7 @@ table.tradelist tr:hover td{background:var(--surface2);}
         <div class="field full">
           <div class="confidence-panel">
             <span class="confidence-panel-title">Pewność transakcji</span>
-            <span class="confidence-panel-sub">Jak mocno wierzyłeś w ten setup przed wejściem:  5 gwiazdek = mega pewność, 1 = bardzo słaba pewność.</span>
+            <span class="confidence-panel-sub">Jak mocno wierzyłeś w ten setup przed wejściem — 5 gwiazdek = mega pewność, 1 = strzał na pół gwizdka.</span>
             <div class="confidence-stars" id="confidenceStars">
               <button type="button" class="star-btn" data-val="1">★</button>
               <button type="button" class="star-btn" data-val="2">★</button>
@@ -1234,7 +1228,21 @@ function computeStats(mode){
     running+=t.pnl; peak=Math.max(peak,running); maxDD=Math.max(maxDD,peak-running);
   });
   const recoveryFactor = maxDD>0 ? (trades.reduce((s,t)=>s+t.pnl,0))/maxDD : (totalPnl>0?10:0);
-  return {total, winRate, totalPnl, profitFactor, avgWin, avgLoss, consistency, recoveryFactor, beCount, scoredCount: scoredVal.length};
+
+  // winstreak: liczba wygranych transakcji z rzędu (chronologicznie, BE pomijane,
+  // nie liczy się jako przerwanie serii ani jako wygrana). Pokazujemy wartość
+  // dopiero od 2 wygranych z rzędu — pojedyncza wygrana to jeszcze nie "streak".
+  const chronoScored = scored.filter(t=>tradeValue(t,mode)!==null)
+    .slice().sort((a,b)=> a.date===b.date?0:(a.date<b.date?-1:1));
+  let rawStreak = 0;
+  chronoScored.forEach(t=>{
+    const v = tradeValue(t,mode);
+    if(v>0) rawStreak++;
+    else if(v<0) rawStreak = 0;
+  });
+  const winStreak = rawStreak>=2 ? rawStreak : 0;
+
+  return {total, winRate, totalPnl, profitFactor, avgWin, avgLoss, consistency, recoveryFactor, beCount, scoredCount: scoredVal.length, winStreak};
 }
 
 function renderStatCards(){
@@ -1243,7 +1251,7 @@ function renderStatCards(){
   const cards = [
     {label:'Win Rate', value: s.scoredCount? s.winRate.toFixed(1)+'%':'—', cls:''},
     {label:pnlLabel, value: s.total? fmtValue(s.totalPnl, displayMode):'—', cls: s.totalPnl>=0?'pos':'neg'},
-    {label:'Profit Factor', value: s.scoredCount? s.profitFactor.toFixed(2):'—', cls:''},
+    {label:'Winstreak', value: s.scoredCount? (s.winStreak>0 ? s.winStreak+' 🔥' : '0') : '—', cls: s.winStreak>0?'pos':''},
     {label:'Avg Win', value: s.scoredCount? fmtValue(s.avgWin, displayMode):'—', cls:'pos'},
     {label:'Avg Loss', value: s.scoredCount? fmtValue(-s.avgLoss, displayMode):'—', cls:'neg'},
     {label:'Transakcje', value: s.total + (s.beCount? ` <span style="color:var(--muted);font-size:13px;">(${s.beCount} BE)</span>` : ''), cls:''},
