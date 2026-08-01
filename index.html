@@ -518,7 +518,13 @@ table.tradelist tr:hover td{background:var(--surface2);}
   </div>
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
     <div class="sync-widget">
-      <button class="btn" id="driveConnectBtn">☁ Połącz się z kontem</button>
+      <button class="btn" id="driveConnectBtn"><button class="btn" id="driveConnectBtn">
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px;margin-right:2px;">
+    <circle cx="12" cy="8" r="4"/>
+    <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
+  </svg>
+  Połącz się z kontem
+</button></button>
       <div class="sync-status" id="syncStatusWrap" style="display:none;">
         <span class="sync-dot" id="syncDot"></span>
         <span id="syncText"></span>
