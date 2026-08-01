@@ -1328,7 +1328,7 @@ function renderStatCards(){
   const cards = [
     {label:'Win Rate', value: s.scoredCount? s.winRate.toFixed(1)+'%':'—', cls:''},
     {label:pnlLabel, value: s.total? fmtValue(s.totalPnl, displayMode):'—', cls: s.totalPnl>=0?'pos':'neg'},
-    {label:'Winstreak', value: s.scoredCount? (s.winStreak>0 ? s.winStreak+' 🔥' : '0') : '—', cls: s.winStreak>0?'pos':''},
+    {label:'Winstreak', value: s.scoredCount? (s.winStreak>0 ? s.winStreak+' ' : '0') : '—', cls: s.winStreak>0?'pos':''},
     {label:'Avg Win', value: s.scoredCount? fmtValue(s.avgWin, displayMode):'—', cls:'pos'},
     {label:'Avg Loss', value: s.scoredCount? fmtValue(-s.avgLoss, displayMode):'—', cls:'neg'},
     {label:'Transakcje', value: s.total + (s.beCount? ` <span style="color:var(--muted);font-size:13px;">(${s.beCount} BE)</span>` : ''), cls:''},
