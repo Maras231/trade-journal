@@ -373,6 +373,22 @@ table.tradelist tr:hover td{background:var(--surface2);}
 .be-toggle-sub{font-size:11.5px;color:var(--muted);line-height:1.3;}
 .be-toggle.checked{border-color:var(--gold);background:var(--gold-dim);}
 
+.confidence-panel{
+  background:var(--surface2);border:1px solid var(--border);border-radius:12px;
+  padding:14px 16px;display:flex;flex-direction:column;gap:8px;
+}
+.confidence-panel-title{font-size:13.5px;font-weight:600;color:var(--text);}
+.confidence-panel-sub{font-size:11.5px;color:var(--muted);line-height:1.3;}
+.confidence-stars{display:flex;gap:6px;margin-top:2px;}
+.confidence-stars .star-btn{
+  background:none;border:none;cursor:pointer;font-size:26px;line-height:1;padding:2px;
+  color:#2c3345;transition:color .15s var(--ease),transform .1s var(--ease);
+}
+.confidence-stars .star-btn:hover{transform:scale(1.15);}
+.confidence-stars .star-btn.filled{color:var(--gold);text-shadow:0 0 8px rgba(232,184,75,0.5);}
+.confidence-stars-readonly{display:inline-flex;gap:1px;font-size:12px;color:#2c3345;letter-spacing:1px;}
+.confidence-stars-readonly .filled{color:var(--gold);}
+
 /* day detail panel */
 #dayDetail{margin-top:16px;}
 #dayDetail .dd-title{font-size:13px;color:var(--muted);margin-bottom:10px;font-family:'JetBrains Mono',monospace;}
@@ -643,6 +659,20 @@ table.tradelist tr:hover td{background:var(--surface2);}
               <span class="be-toggle-sub">Transakcja wyjęta na zero — nie liczy się do Win Rate / Avg RR</span>
             </span>
           </label>
+        </div>
+        <div class="field full">
+          <div class="confidence-panel">
+            <span class="confidence-panel-title">Pewność transakcji</span>
+            <span class="confidence-panel-sub">Jak mocno wierzyłeś w ten setup przed wejściem — 5 gwiazdek = mega pewność, 1 = strzał na pół gwizdka.</span>
+            <div class="confidence-stars" id="confidenceStars">
+              <button type="button" class="star-btn" data-val="1">★</button>
+              <button type="button" class="star-btn" data-val="2">★</button>
+              <button type="button" class="star-btn" data-val="3">★</button>
+              <button type="button" class="star-btn" data-val="4">★</button>
+              <button type="button" class="star-btn" data-val="5">★</button>
+            </div>
+            <input type="hidden" id="f-confidence" value="0">
+          </div>
         </div>
         <div class="field full"><label>Opis / notatki</label><textarea id="f-notes" placeholder="Co zadziałało, co poprawić, emocje podczas transakcji..."></textarea></div>
         <div class="field full">
@@ -1059,6 +1089,7 @@ function openModal(edit){
     document.getElementById('f-rr').value = (edit.rr!==undefined && edit.rr!==null) ? edit.rr : '';
     document.getElementById('f-notes').value = edit.notes || '';
     document.getElementById('f-breakeven').checked = !!edit.breakeven;
+    setConfidence(edit.confidence || 0);
     currentImageData = edit.image || null;
     updateDropzonePreview();
     updateBeToggleVisual();
@@ -1069,11 +1100,26 @@ function openModal(edit){
     dpViewDate = new Date();
     setDpDate(new Date().toISOString().slice(0,10));
     document.getElementById('f-breakeven').checked = false;
+    setConfidence(0);
     currentImageData = null;
     updateDropzonePreview();
     updateBeToggleVisual();
   }
 }
+function setConfidence(val){
+  document.getElementById('f-confidence').value = val;
+  document.querySelectorAll('#confidenceStars .star-btn').forEach(btn=>{
+    btn.classList.toggle('filled', Number(btn.dataset.val) <= val);
+  });
+}
+document.getElementById('confidenceStars').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.star-btn');
+  if(!btn) return;
+  const clicked = Number(btn.dataset.val);
+  const current = Number(document.getElementById('f-confidence').value);
+  // kliknięcie tej samej gwiazdki, która jest już max zaznaczoną, czyści ocenę (toggle)
+  setConfidence(clicked === current ? 0 : clicked);
+});
 function updateBeToggleVisual(){
   document.getElementById('beToggleLabel').classList.toggle('checked', document.getElementById('f-breakeven').checked);
 }
@@ -1129,6 +1175,7 @@ document.getElementById('tradeForm').addEventListener('submit', e=>{
     tags: [],
     notes: document.getElementById('f-notes').value.trim(),
     breakeven: document.getElementById('f-breakeven').checked,
+    confidence: Number(document.getElementById('f-confidence').value) || 0,
     image: currentImageData,
     updatedAt: Date.now()
   };
@@ -1523,6 +1570,7 @@ function renderDayDetail(){
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--border);">
         <div>
           <strong>${t.symbol}</strong> <span class="tag ${t.direction}">${t.direction}</span>${t.breakeven?' <span class="tag be">BE</span>':''}
+          ${t.confidence ? `<span style="margin-left:6px;">${renderStarsReadonly(t.confidence)}</span>` : ''}
           ${t.notes ? `<div style="color:var(--muted);font-size:12px;margin-top:3px;max-width:340px;">${escapeHtml(t.notes).slice(0,80)}${t.notes.length>80?'…':''}</div>` : ''}
         </div>
         <span class="pnl-cell ${t.breakeven ? 'be' : (tradeValue(t,displayMode)>=0?'pos':'neg')}">${fmtValue(tradeValue(t,displayMode), displayMode)}</span>
@@ -1534,6 +1582,12 @@ document.getElementById('prevMonth').addEventListener('click', ()=>{ calDate.set
 document.getElementById('nextMonth').addEventListener('click', ()=>{ calDate.setMonth(calDate.getMonth()+1); renderCalendar(); });
 
 /* ============ TRADES TABLE ============ */
+function renderStarsReadonly(val){
+  val = val || 0;
+  let out = '<span class="confidence-stars-readonly">';
+  for(let i=1;i<=5;i++) out += `<span class="${i<=val?'filled':''}">★</span>`;
+  return out + '</span>';
+}
 function escapeHtml(str){
   const div = document.createElement('div'); div.textContent = str; return div.innerHTML;
 }
@@ -1563,7 +1617,7 @@ function renderTradesTable(){
 
   wrap.innerHTML = `<table class="tradelist">
     <thead><tr>
-      <th></th><th>Data</th><th>Symbol</th><th>Kierunek</th><th>Tagi</th><th>${displayMode==='rr'?'RR':'P/L'}</th><th></th>
+      <th></th><th>Data</th><th>Symbol</th><th>Kierunek</th><th>Tagi</th><th>Pewność</th><th>${displayMode==='rr'?'RR':'P/L'}</th><th></th>
     </tr></thead>
     <tbody>
       ${list.map(t=>`
@@ -1573,6 +1627,7 @@ function renderTradesTable(){
           <td><strong>${t.symbol}</strong></td>
           <td><span class="tag ${t.direction}">${t.direction}</span>${t.breakeven?' <span class="tag be">BE</span>':''}</td>
           <td style="color:var(--muted);font-size:12px;">${(t.tags||[]).join(', ')}</td>
+          <td>${t.confidence ? renderStarsReadonly(t.confidence) : '<span style="color:var(--muted);">—</span>'}</td>
           <td class="pnl-cell ${t.breakeven ? 'be' : (tradeValue(t,displayMode)>=0?'pos':'neg')}">${fmtValue(tradeValue(t,displayMode), displayMode)}</td>
           <td>
             <div class="row-actions">
