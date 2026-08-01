@@ -4,8 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Trade Journal</title>
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('tj_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+  }catch(e){}
+})();
+</script>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0B0E14">
+<meta name="theme-color" content="#0B0E14" id="themeColorMeta">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,7 +24,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
-:root{
+:root, [data-theme="dark"]{
   --bg:#0B0E14;
   --surface:#12161F;
   --surface2:#181D28;
@@ -27,31 +35,59 @@
   --loss:#FF6B6B;
   --gold:#E8B84B;
   --gold-dim:rgba(232,184,75,0.12);
+  --star-empty:#2c3345;
   --radius:14px;
   --ease:cubic-bezier(.2,.7,.3,1);
   --shadow-sm:0 1px 2px rgba(0,0,0,.35);
   --shadow-md:0 8px 24px -8px rgba(0,0,0,.55);
   --shadow-lg:0 24px 60px -16px rgba(0,0,0,.65);
   --shadow-gold:0 8px 24px -6px rgba(232,184,75,.25);
+  --body-bg-1: radial-gradient(ellipse 900px 500px at 88% -8%, rgba(232,184,75,0.07) 0%, transparent 60%);
+  --body-bg-2: radial-gradient(circle at 10% 0%, #131826 0%, #0B0E14 45%) fixed;
+  --scrollbar-thumb:#2A3040;
+  --scrollbar-thumb-hover:#363e54;
+}
+[data-theme="light"]{
+  color-scheme:light;
+  --bg:#F4F5F9;
+  --surface:#FFFFFF;
+  --surface2:#F1F2F8;
+  --border:#E1E4EE;
+  --text:#1B1F2A;
+  --muted:#6B7280;
+  --profit:#1C9A63;
+  --loss:#DD3B3B;
+  --gold:#B8860B;
+  --gold-dim:rgba(184,134,11,0.10);
+  --star-empty:#DCE0EB;
+  --radius:14px;
+  --ease:cubic-bezier(.2,.7,.3,1);
+  --shadow-sm:0 1px 2px rgba(20,25,45,.06);
+  --shadow-md:0 8px 24px -8px rgba(20,25,45,.14);
+  --shadow-lg:0 24px 60px -16px rgba(20,25,45,.22);
+  --shadow-gold:0 8px 20px -6px rgba(184,134,11,.22);
+  --body-bg-1: radial-gradient(ellipse 900px 500px at 88% -8%, rgba(184,134,11,0.05) 0%, transparent 60%);
+  --body-bg-2: radial-gradient(circle at 10% 0%, #FFFFFF 0%, #EEF0F6 55%) fixed;
+  --scrollbar-thumb:#D3D7E2;
+  --scrollbar-thumb-hover:#B9BFCE;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-html{scroll-behavior:smooth;color-scheme:dark;}
+html{scroll-behavior:smooth;}
 body{
-  background:
-    radial-gradient(ellipse 900px 500px at 88% -8%, rgba(232,184,75,0.07) 0%, transparent 60%),
-    radial-gradient(circle at 10% 0%, #131826 0%, #0B0E14 45%) fixed;
+  background: var(--body-bg-1), var(--body-bg-2);
   color:var(--text);
   font-family:'Inter',sans-serif;
   min-height:100vh;
   padding:28px 32px 60px;
   -webkit-font-smoothing:antialiased;
   animation:pageIn .5s var(--ease);
+  transition:background .25s var(--ease),color .25s var(--ease);
 }
 @keyframes pageIn{from{opacity:0;}to{opacity:1;}}
 ::-webkit-scrollbar{width:9px;height:9px;}
 ::-webkit-scrollbar-track{background:transparent;}
-::-webkit-scrollbar-thumb{background:#2A3040;border-radius:8px;border:2px solid var(--bg);background-clip:padding-box;}
-::-webkit-scrollbar-thumb:hover{background:#363e54;}
+::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:8px;border:2px solid var(--bg);background-clip:padding-box;}
+::-webkit-scrollbar-thumb:hover{background:var(--scrollbar-thumb-hover);}
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px;}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important;}}
 
@@ -74,6 +110,17 @@ header.top{
   font-family:'Space Grotesk',sans-serif;font-size:22px;letter-spacing:0.2px;font-weight:700;
 }
 .brand p{color:var(--muted);font-size:12.5px;margin-top:3px;letter-spacing:.1px;}
+
+.theme-toggle{
+  width:32px;height:32px;border-radius:9px;background:var(--surface2);border:1px solid var(--border);
+  color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+  transition:border-color .18s var(--ease),color .18s var(--ease),transform .18s var(--ease);flex:none;
+}
+.theme-toggle:hover{border-color:var(--gold);color:var(--gold);transform:translateY(-1px);}
+.theme-toggle svg{width:16px;height:16px;}
+.theme-toggle .icon-moon{display:none;}
+[data-theme="light"] .theme-toggle .icon-sun{display:none;}
+[data-theme="light"] .theme-toggle .icon-moon{display:block;}
 
 .btn{
   border:1px solid var(--border);background:var(--surface2);color:var(--text);
@@ -280,7 +327,7 @@ table.tradelist tr:hover td{background:var(--surface2);}
   transition:border-color .18s var(--ease),box-shadow .18s var(--ease);
 }
 .field textarea{resize:vertical;min-height:80px;}
-.field input[type=date]{color-scheme:dark;cursor:pointer;}
+.field input[type=date]{cursor:pointer;}
 .field input:focus, .field select:focus, .field textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(232,184,75,.12);}
 
 /* ---------- CUSTOM DATE PICKER ---------- */
@@ -382,11 +429,11 @@ table.tradelist tr:hover td{background:var(--surface2);}
 .confidence-stars{display:flex;gap:6px;margin-top:2px;}
 .confidence-stars .star-btn{
   background:none;border:none;cursor:pointer;font-size:26px;line-height:1;padding:2px;
-  color:#2c3345;transition:color .15s var(--ease),transform .1s var(--ease);
+  color:var(--star-empty);transition:color .15s var(--ease),transform .1s var(--ease);
 }
 .confidence-stars .star-btn:hover{transform:scale(1.15);}
 .confidence-stars .star-btn.filled{color:var(--gold);text-shadow:0 0 8px rgba(232,184,75,0.5);}
-.confidence-stars-readonly{display:inline-flex;gap:1px;font-size:12px;color:#2c3345;letter-spacing:1px;}
+.confidence-stars-readonly{display:inline-flex;gap:1px;font-size:12px;color:var(--star-empty);letter-spacing:1px;}
 .confidence-stars-readonly .filled{color:var(--gold);}
 
 /* day detail panel */
@@ -512,7 +559,13 @@ table.tradelist tr:hover td{background:var(--surface2);}
   <div class="brand">
     <div class="mark">TJ</div>
     <div>
-      <h1>Trade Journal</h1>
+      <div style="display:flex;align-items:center;gap:9px;">
+        <h1>Trade Journal</h1>
+        <button class="theme-toggle" id="themeToggle" type="button" title="Zmień motyw">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
+        </button>
+      </div>
       <p>Twój dziennik transakcji i analityka</p>
     </div>
   </div>
@@ -945,6 +998,24 @@ let calDate = new Date();
 calDate.setDate(1);
 let displayMode = 'usd'; // 'usd' | 'rr'
 
+/* ============ THEME (jasny / ciemny) ============ */
+const THEME_KEY = 'tj_theme';
+function cssVar(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem(THEME_KEY, theme);
+  const meta = document.getElementById('themeColorMeta');
+  if(meta) meta.setAttribute('content', theme==='light' ? '#F4F5F9' : '#0B0E14');
+}
+applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+document.getElementById('themeToggle').addEventListener('click', ()=>{
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+  renderAll();
+});
+
 document.querySelectorAll('#modeToggle button').forEach(b=>{
   b.addEventListener('click', ()=>{
     document.querySelectorAll('#modeToggle button').forEach(x=>x.classList.remove('active'));
@@ -1257,7 +1328,7 @@ function renderStatCards(){
   const cards = [
     {label:'Win Rate', value: s.scoredCount? s.winRate.toFixed(1)+'%':'—', cls:''},
     {label:pnlLabel, value: s.total? fmtValue(s.totalPnl, displayMode):'—', cls: s.totalPnl>=0?'pos':'neg'},
-    {label:'Winstreak', value: s.scoredCount? (s.winStreak>0 ? s.winStreak+' ' : '0') : '—', cls: s.winStreak>0?'pos':''},
+    {label:'Winstreak', value: s.scoredCount? (s.winStreak>0 ? s.winStreak+' 🔥' : '0') : '—', cls: s.winStreak>0?'pos':''},
     {label:'Avg Win', value: s.scoredCount? fmtValue(s.avgWin, displayMode):'—', cls:'pos'},
     {label:'Avg Loss', value: s.scoredCount? fmtValue(-s.avgLoss, displayMode):'—', cls:'neg'},
     {label:'Transakcje', value: s.total + (s.beCount? ` <span style="color:var(--muted);font-size:13px;">(${s.beCount} BE)</span>` : ''), cls:''},
@@ -1294,7 +1365,7 @@ function renderRadar(){
   });
   const finalVal = cum;
   const isPositive = finalVal >= 0;
-  const color = isPositive ? '#3ADD9C' : '#FF6B6B';
+  const color = isPositive ? cssVar('--profit') : cssVar('--loss');
 
   const minY = Math.min(0, ...points.map(p=>p.y));
   const maxY = Math.max(0, ...points.map(p=>p.y));
