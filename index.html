@@ -872,7 +872,7 @@ async function onSignedIn(){
     await ensureDriveFile();
     await pullFromDrive();
     renderAll();
-    setSyncStatus('synced', 'Zsynchronizowano ' + nowTimeLabel());
+    setSyncStatus('synced', 'Zsynchronizowano');
   }catch(err){
     console.error(err);
     setSyncStatus('error', 'Błąd synchronizacji - spróbuję ponownie');
