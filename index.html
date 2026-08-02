@@ -872,7 +872,7 @@ async function onSignedIn(){
     await ensureDriveFile();
     await pullFromDrive();
     renderAll();
-    setSyncStatus('synced', 'Zsynchronizowano');
+    setSyncStatus('synced', 'Zsynchronizowano ' + nowTimeLabel());
   }catch(err){
     console.error(err);
     setSyncStatus('error', 'Błąd synchronizacji - spróbuję ponownie');
@@ -971,7 +971,7 @@ async function pushToDrive(){
       headers: { 'Content-Type': 'application/json' },
       body: payload
     });
-    setSyncStatus('synced', 'Zsynchronizowano ' + nowTimeLabel());
+    setSyncStatus('synced', 'Zsynchronizowano');
   }catch(err){
     console.error(err);
     setSyncStatus('error', 'Błąd zapisu - spróbuję ponownie za chwilę');
@@ -1041,6 +1041,10 @@ function saveTrades(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(trades))
 function saveMonthNotes(){ localStorage.setItem(MONTH_NOTES_KEY, JSON.stringify(monthNotes)); }
 const MONTH_NAMES_PL = ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
 function uid(){ return 't_' + Date.now() + '_' + Math.floor(Math.random()*10000); }
+function fmtDateWords(dateStr){
+  const [y,m,d] = dateStr.split('-');
+  return `${parseInt(d,10)} ${MONTH_NAMES_PL[parseInt(m,10)-1]} ${y}`;
+}
 function fmt(n){
   const s = n<0 ? '-' : '';
   return s + '$' + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
@@ -1710,16 +1714,15 @@ function renderTradesTable(){
 
   wrap.innerHTML = `<table class="tradelist">
     <thead><tr>
-      <th></th><th>Data</th><th>Symbol</th><th>Kierunek</th><th>Tagi</th><th>Pewność</th><th>${displayMode==='rr'?'RR':'P/L'}</th><th></th>
+      <th></th><th>Data</th><th>Symbol</th><th>Kierunek</th><th>Pewność</th><th>${displayMode==='rr'?'RR':'P/L'}</th><th></th>
     </tr></thead>
     <tbody>
       ${list.map(t=>`
         <tr>
           <td>${t.image ? `<img class="thumb" src="${t.image}">` : ''}</td>
-          <td style="font-family:'JetBrains Mono',monospace;">${t.date}</td>
+          <td style="font-family:'Inter',sans-serif;">${fmtDateWords(t.date)}</td>
           <td><strong>${t.symbol}</strong></td>
           <td><span class="tag ${t.direction}">${t.direction}</span>${t.breakeven?' <span class="tag be">BE</span>':''}</td>
-          <td style="color:var(--muted);font-size:12px;">${(t.tags||[]).join(', ')}</td>
           <td>${t.confidence ? renderStarsReadonly(t.confidence) : '<span style="color:var(--muted);">—</span>'}</td>
           <td class="pnl-cell ${t.breakeven ? 'be' : (tradeValue(t,displayMode)>=0?'pos':'neg')}">${fmtValue(tradeValue(t,displayMode), displayMode)}</td>
           <td>
