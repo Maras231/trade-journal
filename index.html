@@ -303,6 +303,15 @@ table.tradelist tr:hover td{background:var(--surface2);}
 .empty-state{text-align:center;padding:50px 20px;color:var(--muted);}
 .empty-state .big{font-family:'Space Grotesk',sans-serif;font-size:16px;color:var(--text);margin-bottom:6px;}
 
+.pagination{
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;
+  padding-top:16px;margin-top:6px;
+}
+.pagination-info{color:var(--muted);font-size:12.5px;font-family:'JetBrains Mono',monospace;}
+.pagination-btns{display:flex;gap:8px;}
+.pagination-btns .btn:disabled{opacity:.4;cursor:not-allowed;}
+.pagination-btns .btn:disabled:hover{border-color:var(--border);color:var(--text);transform:none;box-shadow:none;}
+
 /* ---------- MODAL ---------- */
 .modal-overlay{
   position:fixed;inset:0;background:rgba(4,5,9,0.78);backdrop-filter:blur(4px);
@@ -872,7 +881,7 @@ async function onSignedIn(){
     await ensureDriveFile();
     await pullFromDrive();
     renderAll();
-    setSyncStatus('synced', 'Zsynchronizowano ' + nowTimeLabel());
+    setSyncStatus('synced', 'Zsynchronizowano');
   }catch(err){
     console.error(err);
     setSyncStatus('error', 'Błąd synchronizacji - spróbuję ponownie');
@@ -971,7 +980,7 @@ async function pushToDrive(){
       headers: { 'Content-Type': 'application/json' },
       body: payload
     });
-    setSyncStatus('synced', 'Zsynchronizowano');
+    setSyncStatus('synced', 'Zsynchronizowano ' + nowTimeLabel());
   }catch(err){
     console.error(err);
     setSyncStatus('error', 'Błąd zapisu - spróbuję ponownie za chwilę');
@@ -1688,6 +1697,9 @@ function renderStarsReadonly(val){
 function escapeHtml(str){
   const div = document.createElement('div'); div.textContent = str; return div.innerHTML;
 }
+const TRADES_PER_PAGE = 10;
+let tradesPage = 1;
+
 function renderTradesTable(){
   const search = document.getElementById('searchInput').value.toLowerCase();
   const dirFilter = document.getElementById('filterDirection').value;
@@ -1712,12 +1724,18 @@ function renderTradesTable(){
     return;
   }
 
+  const totalPages = Math.max(1, Math.ceil(list.length / TRADES_PER_PAGE));
+  if(tradesPage > totalPages) tradesPage = totalPages;
+  if(tradesPage < 1) tradesPage = 1;
+  const startIdx = (tradesPage-1) * TRADES_PER_PAGE;
+  const pageList = list.slice(startIdx, startIdx + TRADES_PER_PAGE);
+
   wrap.innerHTML = `<table class="tradelist">
     <thead><tr>
       <th></th><th>Data</th><th>Symbol</th><th>Kierunek</th><th>Pewność</th><th>${displayMode==='rr'?'RR':'P/L'}</th><th></th>
     </tr></thead>
     <tbody>
-      ${list.map(t=>`
+      ${pageList.map(t=>`
         <tr>
           <td>${t.image ? `<img class="thumb" src="${t.image}">` : ''}</td>
           <td style="font-family:'Inter',sans-serif;">${fmtDateWords(t.date)}</td>
@@ -1734,7 +1752,19 @@ function renderTradesTable(){
         </tr>
       `).join('')}
     </tbody>
-  </table>`;
+  </table>
+  <div class="pagination">
+    <span class="pagination-info">${list.length} transakcji · strona ${tradesPage} / ${totalPages}</span>
+    <div class="pagination-btns">
+      <button class="btn ghost" id="pagePrev" ${tradesPage<=1?'disabled':''}>‹ Wstecz</button>
+      <button class="btn ghost" id="pageNext" ${tradesPage>=totalPages?'disabled':''}>Dalej ›</button>
+    </div>
+  </div>`;
+
+  const prevBtn = document.getElementById('pagePrev');
+  const nextBtn = document.getElementById('pageNext');
+  if(prevBtn) prevBtn.addEventListener('click', ()=>{ tradesPage--; renderTradesTable(); });
+  if(nextBtn) nextBtn.addEventListener('click', ()=>{ tradesPage++; renderTradesTable(); });
 }
 window.editTrade = function(id){
   const t = trades.find(x=>x.id===id);
@@ -1752,8 +1782,8 @@ window.deleteTrade = function(id){
 };
 
 ['searchInput','filterDirection','sortSelect'].forEach(id=>{
-  document.getElementById(id).addEventListener('input', renderTradesTable);
-  document.getElementById(id).addEventListener('change', renderTradesTable);
+  document.getElementById(id).addEventListener('input', ()=>{ tradesPage = 1; renderTradesTable(); });
+  document.getElementById(id).addEventListener('change', ()=>{ tradesPage = 1; renderTradesTable(); });
 });
 
 /* ============ EXPORT / IMPORT ============ */
