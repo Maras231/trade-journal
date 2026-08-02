@@ -198,7 +198,7 @@ nav.tabs button:hover:not(.active){color:var(--text);}
 .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin-bottom:14px;font-weight:600;letter-spacing:.1px;}
 
 /* radar */
-#radarWrap{display:flex;justify-content:center;overflow:visible;}
+.equity-wrap{display:flex;justify-content:center;overflow:visible;}
 .eq-tooltip{
   position:absolute;transform:translate(-50%,-130%);
   background:var(--surface2);border:1px solid var(--border);border-radius:8px;
@@ -460,7 +460,9 @@ table.tradelist tr:hover td{background:var(--surface2);}
 .eq-total{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:18px;font-feature-settings:"tnum";}
 .eq-total .pos{color:var(--profit);}
 .eq-total .neg{color:var(--loss);}
-#radarWrap svg{max-width:100%;height:auto;display:block;}
+.equity-wrap svg{max-width:100%;height:auto;display:block;}
+#monthEquityWrap svg{height:210px;}
+#monthEquityWrap{max-width:590px;margin:0;justify-content:flex-start;}
 .eq-stats{display:flex;justify-content:space-between;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
 .eq-stat{text-align:center;flex:1;}
 .eq-stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;font-weight:600;}
@@ -627,7 +629,7 @@ table.tradelist tr:hover td{background:var(--surface2);}
         <h2>Krzywa kapitału</h2>
         <div class="eq-total" id="eqTotal"></div>
       </div>
-      <div id="radarWrap"></div>
+      <div id="radarWrap" class="equity-wrap"></div>
       <div class="eq-stats" id="eqStats"></div>
     </div>
 
@@ -677,6 +679,13 @@ table.tradelist tr:hover td{background:var(--surface2);}
       <button class="btn ghost" id="monthDetailClose">✕ Zamknij</button>
     </div>
     <div class="stats-row" id="monthStatsRow"></div>
+    <div class="panel" style="margin-top:14px;padding:16px 18px;max-width:620px;">
+      <div class="eq-head">
+        <h2>Krzywa kapitału — ten miesiąc</h2>
+        <div class="eq-total" id="monthEqTotal"></div>
+      </div>
+      <div id="monthEquityWrap" class="equity-wrap"></div>
+    </div>
     <div class="field full month-notes-field">
       <label>Notatki i uwagi do miesiąca</label>
       <textarea id="monthNotes" placeholder="Co poszło dobrze w tym miesiącu, co poprawić, wnioski na przyszłość..."></textarea>
@@ -1359,19 +1368,13 @@ function renderStatCards(){
     </div>`).join('');
 }
 
-/* ============ EQUITY CURVE (SVG) ============ */
-function renderRadar(){
-  const wrap = document.getElementById('radarWrap');
-  const statsBox = document.getElementById('eqStats');
-  const totalBox = document.getElementById('eqTotal');
-
-  const sorted = [...trades].sort((a,b)=> a.date===b.date ? 0 : (a.date<b.date?-1:1));
+/* ============ EQUITY CURVE (SVG) - funkcja wspolna ============ */
+function drawEquityCurve(wrapEl, list){
+  const sorted = [...list].sort((a,b)=> a.date===b.date ? 0 : (a.date<b.date?-1:1));
 
   if(!sorted.length){
-    wrap.innerHTML = `<div class="empty-state" style="padding:34px 10px;"><div class="big">Brak danych</div>Dodaj transakcje, aby zobaczyć krzywą kapitału.</div>`;
-    statsBox.innerHTML = '';
-    totalBox.textContent = '';
-    return;
+    wrapEl.innerHTML = `<div class="empty-state" style="padding:34px 10px;"><div class="big">Brak danych</div>Brak transakcji w tym okresie.</div>`;
+    return {finalVal:0, peak:0, maxDD:0, count:0};
   }
 
   let cum = 0, peak = 0, maxDD = 0;
@@ -1398,13 +1401,12 @@ function renderRadar(){
   const zeroY = yScale(0).toFixed(1);
   const lastX = xScale(points.length-1), lastY = yScale(finalVal);
 
-  totalBox.innerHTML = `<span class="${isPositive?'pos':'neg'}">${finalVal>=0?'+':''}${fmt(finalVal)}</span>`;
-
-  // punkty do najechania/dotknięcia (pomijamy punkt 0 - to sztuczny start bez daty)
+  // punkty do najechania/dotkniecia (pomijamy punkt 0 - to sztuczny start bez daty)
   const hitPoints = points.map((p,i)=>({
     x: xScale(i), y: yScale(p.y), date: i>0 ? sorted[i-1].date : null
   })).filter(p=>p.date);
 
+  const gradId = 'eqGrad_' + Math.random().toString(36).slice(2,9);
   const dotsSvg = hitPoints.map((p,i)=>`
     <circle class="eq-dot" data-idx="${i}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.5" fill="${color}" opacity="0" style="pointer-events:none;"/>
   `).join('');
@@ -1412,28 +1414,28 @@ function renderRadar(){
     <circle class="eq-hit" data-idx="${i}" data-date="${p.date}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="11" fill="transparent" style="cursor:pointer;"/>
   `).join('');
 
-  wrap.innerHTML = `
+  wrapEl.innerHTML = `
   <div style="position:relative;width:100%;">
   <svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none">
     <defs>
-      <linearGradient id="eqGrad" x1="0" y1="0" x2="0" y2="1">
+      <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stop-color="${color}" stop-opacity="0.32"/>
         <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
       </linearGradient>
     </defs>
     <line x1="${padX}" y1="${zeroY}" x2="${w-padX}" y2="${zeroY}" stroke="#242A38" stroke-width="1" stroke-dasharray="4,4"/>
-    <polygon points="${areaPts}" fill="url(#eqGrad)"/>
+    <polygon points="${areaPts}" fill="url(#${gradId})"/>
     <polyline points="${linePts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
     <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="4" fill="${color}"/>
     <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="8" fill="${color}" opacity="0.18"/>
     ${dotsSvg}
     ${hitsSvg}
   </svg>
-  <div class="eq-tooltip" id="eqTooltip"></div>
+  <div class="eq-tooltip"></div>
   </div>`;
 
-  const tooltip = document.getElementById('eqTooltip');
-  const svgEl = wrap.querySelector('svg');
+  const tooltip = wrapEl.querySelector('.eq-tooltip');
+  const svgEl = wrapEl.querySelector('svg');
   function showEqTooltip(circle){
     const idx = circle.dataset.idx;
     const dateStr = circle.dataset.date;
@@ -1444,32 +1446,62 @@ function renderRadar(){
     pt.y = parseFloat(circle.getAttribute('cy'));
     const ctm = svgEl.getScreenCTM();
     const transformed = pt.matrixTransform(ctm);
-    const wrapRect = wrap.getBoundingClientRect();
+    const wrapRect = wrapEl.getBoundingClientRect();
     tooltip.style.left = (transformed.x - wrapRect.left) + 'px';
     tooltip.style.top = (transformed.y - wrapRect.top) + 'px';
-    const dot = wrap.querySelector(`.eq-dot[data-idx="${idx}"]`);
-    wrap.querySelectorAll('.eq-dot').forEach(d=>d.setAttribute('opacity','0'));
+    const dot = wrapEl.querySelector(`.eq-dot[data-idx="${idx}"]`);
+    wrapEl.querySelectorAll('.eq-dot').forEach(d=>d.setAttribute('opacity','0'));
     if(dot) dot.setAttribute('opacity','1');
   }
   function hideEqTooltip(){
     tooltip.style.display = 'none';
-    wrap.querySelectorAll('.eq-dot').forEach(d=>d.setAttribute('opacity','0'));
+    wrapEl.querySelectorAll('.eq-dot').forEach(d=>d.setAttribute('opacity','0'));
   }
-  wrap.querySelectorAll('.eq-hit').forEach(c=>{
+  wrapEl.querySelectorAll('.eq-hit').forEach(c=>{
     c.addEventListener('mouseenter', ()=>showEqTooltip(c));
     c.addEventListener('mouseleave', hideEqTooltip);
     c.addEventListener('touchstart', (e)=>{ e.preventDefault(); showEqTooltip(c); }, {passive:false});
   });
   document.addEventListener('touchstart', (e)=>{
-    if(!wrap.contains(e.target)) hideEqTooltip();
+    if(!wrapEl.contains(e.target)) hideEqTooltip();
   });
+
+  return {finalVal, peak, maxDD, count: sorted.length};
+}
+
+function renderRadar(){
+  const wrap = document.getElementById('radarWrap');
+  const statsBox = document.getElementById('eqStats');
+  const totalBox = document.getElementById('eqTotal');
+
+  if(!trades.length){
+    wrap.innerHTML = `<div class="empty-state" style="padding:34px 10px;"><div class="big">Brak danych</div>Dodaj transakcje, aby zobaczyc krzywa kapitalu.</div>`;
+    statsBox.innerHTML = '';
+    totalBox.textContent = '';
+    return;
+  }
+
+  const result = drawEquityCurve(wrap, trades);
+  const finalVal = result.finalVal, peak = result.peak, maxDD = result.maxDD, count = result.count;
+  const isPositive = finalVal >= 0;
+  totalBox.innerHTML = `<span class="${isPositive?'pos':'neg'}">${finalVal>=0?'+':''}${fmt(finalVal)}</span>`;
 
   statsBox.innerHTML = `
     <div class="eq-stat"><div class="eq-stat-label">Szczyt</div><div class="eq-stat-val pos">${fmt(peak)}</div></div>
-    <div class="eq-stat"><div class="eq-stat-label">Maks. obsunięcie</div><div class="eq-stat-val neg">${fmt(maxDD)}</div></div>
-    <div class="eq-stat"><div class="eq-stat-label">Transakcje</div><div class="eq-stat-val">${sorted.length}</div></div>
+    <div class="eq-stat"><div class="eq-stat-label">Maks. obsuniecie</div><div class="eq-stat-val neg">${fmt(maxDD)}</div></div>
+    <div class="eq-stat"><div class="eq-stat-label">Transakcje</div><div class="eq-stat-val">${count}</div></div>
   `;
 }
+
+function renderMonthEquityCurve(list){
+  const wrap = document.getElementById('monthEquityWrap');
+  const totalBox = document.getElementById('monthEqTotal');
+  if(!wrap) return;
+  const result = drawEquityCurve(wrap, list);
+  const isPositive = result.finalVal >= 0;
+  totalBox.innerHTML = list.length ? `<span class="${isPositive?'pos':'neg'}">${result.finalVal>=0?'+':''}${fmt(result.finalVal)}</span>` : '';
+}
+
 
 /* ============ MONTHS SUMMARY ============ */
 function computeMonthStats(list){
@@ -1554,6 +1586,8 @@ function renderMonthDetail(){
       <div class="label">${c.label}</div>
       <div class="value ${c.cls}">${c.value}</div>
     </div>`).join('');
+
+  renderMonthEquityCurve(list);
 
   const existingNote = monthNotes[selectedSummaryMonth];
   document.getElementById('monthNotes').value = (typeof existingNote === 'string' ? existingNote : existingNote?.text) || '';
