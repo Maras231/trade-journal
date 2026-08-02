@@ -1328,7 +1328,7 @@ function renderStatCards(){
   const cards = [
     {label:'Win Rate', value: s.scoredCount? s.winRate.toFixed(1)+'%':'—', cls:''},
     {label:pnlLabel, value: s.total? fmtValue(s.totalPnl, displayMode):'—', cls: s.totalPnl>=0?'pos':'neg'},
-    {label:'Winstreak', value: s.scoredCount? (s.winStreak>0 ? s.winStreak+' ' : '0') : '—', cls: s.winStreak>0?'pos':''},
+    {label:'Winstreak', value: s.scoredCount? (s.winStreak>0 ? s.winStreak+'' : '0') : '—', cls: s.winStreak>0?'pos':''},
     {label:'Avg Win', value: s.scoredCount? fmtValue(s.avgWin, displayMode):'—', cls:'pos'},
     {label:'Avg Loss', value: s.scoredCount? fmtValue(-s.avgLoss, displayMode):'—', cls:'neg'},
     {label:'Transakcje', value: s.total + (s.beCount? ` <span style="color:var(--muted);font-size:13px;">(${s.beCount} BE)</span>` : ''), cls:''},
@@ -1579,7 +1579,11 @@ function renderCalendar(){
   while(cursor <= lastDay){
     const days = [];
     for(let i=0;i<5;i++) days.push(addDays(cursor,i));
-    weeks.push(days);
+    // pomijamy tygodnie, które w całości leżą poza aktualnym miesiącem
+    // (np. gdy 1. dzień miesiąca wypada w weekend, "tydzień" Pon-Pt sprzed
+    // niego należałby wyłącznie do poprzedniego miesiąca — nie pokazujemy go)
+    const hasCurrentMonthDay = days.some(d=> d.getFullYear()===y && d.getMonth()===m);
+    if(hasCurrentMonthDay) weeks.push(days);
     cursor = addDays(cursor,7);
   }
 
@@ -1592,19 +1596,17 @@ function renderCalendar(){
       const dateStr = dstr(dateObj);
 
       if(!inMonth){
-        // pokazuj przygaszoną transakcję TYLKO dla dni z POPRZEDNIEGO miesiąca
-        // (początek tygodnia sprzed 1. dnia miesiąca) — nie dla następnego miesiąca
-        const isBeforeMonth = dateObj < firstDay;
-        const otherInfo = isBeforeMonth ? dayInfoAnyMonth(dateStr) : null;
-        if(!otherInfo){ html += '<td class="empty"></td>'; return; }
+        // dni z sąsiedniego miesiąca w niepełnym tygodniu na przełomie -
+        // pokazujemy je zawsze (przygaszone), niezależnie czy mają transakcje
+        const otherInfo = dayInfoAnyMonth(dateStr);
         let ocls = 'other-month';
-        ocls += otherInfo.pnl>=0 ? ' win' : ' loss';
-        const oDisplay = displayMode==='rr'
+        if(otherInfo) ocls += otherInfo.pnl>=0 ? ' win' : ' loss';
+        const oDisplay = otherInfo ? (displayMode==='rr'
           ? (otherInfo.valCount ? `${otherInfo.val>=0?'+':''}${otherInfo.val.toFixed(1)}R` : '—')
-          : `${otherInfo.pnl>=0?'+':''}${Math.round(otherInfo.pnl)}`;
+          : `${otherInfo.pnl>=0?'+':''}${Math.round(otherInfo.pnl)}`) : '';
         html += `<td class="${ocls}" data-date="${dateStr}">
           <div class="daynum">${dateObj.getDate()} <span class="mo-abbr">${monthAbbr[dateObj.getMonth()]}</span></div>
-          <div class="pnl">${oDisplay}</div><div class="count">${otherInfo.count} trades</div>
+          ${otherInfo ? `<div class="pnl">${oDisplay}</div><div class="count">${otherInfo.count} trades</div>` : ''}
         </td>`;
         return;
       }
