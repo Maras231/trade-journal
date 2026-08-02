@@ -198,7 +198,13 @@ nav.tabs button:hover:not(.active){color:var(--text);}
 .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin-bottom:14px;font-weight:600;letter-spacing:.1px;}
 
 /* radar */
-#radarWrap{display:flex;justify-content:center;}
+#radarWrap{display:flex;justify-content:center;overflow:visible;}
+.eq-tooltip{
+  position:absolute;transform:translate(-50%,-130%);
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  padding:6px 11px;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--text);
+  white-space:nowrap;pointer-events:none;box-shadow:var(--shadow-md);z-index:6;display:none;
+}
 
 /* calendar */
 .cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
@@ -1394,7 +1400,20 @@ function renderRadar(){
 
   totalBox.innerHTML = `<span class="${isPositive?'pos':'neg'}">${finalVal>=0?'+':''}${fmt(finalVal)}</span>`;
 
+  // punkty do najechania/dotknięcia (pomijamy punkt 0 - to sztuczny start bez daty)
+  const hitPoints = points.map((p,i)=>({
+    x: xScale(i), y: yScale(p.y), date: i>0 ? sorted[i-1].date : null
+  })).filter(p=>p.date);
+
+  const dotsSvg = hitPoints.map((p,i)=>`
+    <circle class="eq-dot" data-idx="${i}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.5" fill="${color}" opacity="0" style="pointer-events:none;"/>
+  `).join('');
+  const hitsSvg = hitPoints.map((p,i)=>`
+    <circle class="eq-hit" data-idx="${i}" data-date="${p.date}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="11" fill="transparent" style="cursor:pointer;"/>
+  `).join('');
+
   wrap.innerHTML = `
+  <div style="position:relative;width:100%;">
   <svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none">
     <defs>
       <linearGradient id="eqGrad" x1="0" y1="0" x2="0" y2="1">
@@ -1407,7 +1426,43 @@ function renderRadar(){
     <polyline points="${linePts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
     <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="4" fill="${color}"/>
     <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="8" fill="${color}" opacity="0.18"/>
-  </svg>`;
+    ${dotsSvg}
+    ${hitsSvg}
+  </svg>
+  <div class="eq-tooltip" id="eqTooltip"></div>
+  </div>`;
+
+  const tooltip = document.getElementById('eqTooltip');
+  const svgEl = wrap.querySelector('svg');
+  function showEqTooltip(circle){
+    const idx = circle.dataset.idx;
+    const dateStr = circle.dataset.date;
+    tooltip.textContent = fmtDateWords(dateStr);
+    tooltip.style.display = 'block';
+    const pt = svgEl.createSVGPoint();
+    pt.x = parseFloat(circle.getAttribute('cx'));
+    pt.y = parseFloat(circle.getAttribute('cy'));
+    const ctm = svgEl.getScreenCTM();
+    const transformed = pt.matrixTransform(ctm);
+    const wrapRect = wrap.getBoundingClientRect();
+    tooltip.style.left = (transformed.x - wrapRect.left) + 'px';
+    tooltip.style.top = (transformed.y - wrapRect.top) + 'px';
+    const dot = wrap.querySelector(`.eq-dot[data-idx="${idx}"]`);
+    wrap.querySelectorAll('.eq-dot').forEach(d=>d.setAttribute('opacity','0'));
+    if(dot) dot.setAttribute('opacity','1');
+  }
+  function hideEqTooltip(){
+    tooltip.style.display = 'none';
+    wrap.querySelectorAll('.eq-dot').forEach(d=>d.setAttribute('opacity','0'));
+  }
+  wrap.querySelectorAll('.eq-hit').forEach(c=>{
+    c.addEventListener('mouseenter', ()=>showEqTooltip(c));
+    c.addEventListener('mouseleave', hideEqTooltip);
+    c.addEventListener('touchstart', (e)=>{ e.preventDefault(); showEqTooltip(c); }, {passive:false});
+  });
+  document.addEventListener('touchstart', (e)=>{
+    if(!wrap.contains(e.target)) hideEqTooltip();
+  });
 
   statsBox.innerHTML = `
     <div class="eq-stat"><div class="eq-stat-label">Szczyt</div><div class="eq-stat-val pos">${fmt(peak)}</div></div>
